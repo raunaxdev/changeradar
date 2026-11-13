@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: dirname(fileURLToPath(import.meta.url)),
+allowedDevOrigins: ["http://localhost:8000/*"]
 };
 
 export default nextConfig;

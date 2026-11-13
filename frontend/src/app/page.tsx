@@ -26,9 +26,9 @@ type CompareResponse = {
   analyses: ApiAnalysis[];
 };
 
-const API_BASE_URL = (
+const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/+$/, "");
+).replace(/\/$/, "");
 
 const SAMPLE_REPORT: ChangeReportItem[] = [
   {
@@ -153,7 +153,7 @@ export default function Home() {
     formData.append("new_file", revisedFile);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/compare`, {
+      const response = await fetch(`${API_BASE}/api/compare`, {
         method: "POST",
         body: formData,
       });
@@ -178,10 +178,16 @@ export default function Home() {
         })),
       );
     } catch (caughtError) {
+      const isNetworkError =
+        caughtError instanceof TypeError ||
+        (caughtError instanceof Error &&
+          /failed to fetch|networkerror|load failed/i.test(caughtError.message));
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Something went wrong while comparing the documents.",
+        isNetworkError
+          ? "Backend server is waking up or unreachable. Please wait 30 seconds and retry."
+          : caughtError instanceof Error
+            ? caughtError.message
+            : "Something went wrong while comparing the documents.",
       );
     } finally {
       setIsLoading(false);

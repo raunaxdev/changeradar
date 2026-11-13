@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from email import policy
 from email.parser import BytesParser
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from ai_analyzer import analyze_changes
@@ -18,20 +18,40 @@ from extractor import DocumentValidationError, MAX_FILE_SIZE, extract_paragraphs
 
 logger = logging.getLogger("changeradar")
 MAX_REQUEST_SIZE = 2 * MAX_FILE_SIZE + 1024 * 1024
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    if origin.strip()
-] or ["*"]
 
 app = FastAPI(title="ChangeRadar API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials="*" not in ALLOWED_ORIGINS,
-    allow_methods=["POST"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled request error method=%s path=%s type=%s",
+        request.method,
+        request.url.path,
+        type(exc).__name__,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
+
+@app.get("/")
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 async def _read_multipart_in_memory(request: Request) -> dict[str, tuple[str, bytes]]:

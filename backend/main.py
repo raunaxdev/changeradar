@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from email import policy
 from email.parser import BytesParser
@@ -17,12 +18,17 @@ from extractor import DocumentValidationError, MAX_FILE_SIZE, extract_paragraphs
 
 logger = logging.getLogger("changeradar")
 MAX_REQUEST_SIZE = 2 * MAX_FILE_SIZE + 1024 * 1024
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")
+    if origin.strip()
+] or ["*"]
 
 app = FastAPI(title="ChangeRadar API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials="*" not in ALLOWED_ORIGINS,
     allow_methods=["POST"],
     allow_headers=["*"],
 )

@@ -26,6 +26,10 @@ type CompareResponse = {
   analyses: ApiAnalysis[];
 };
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+).replace(/\/+$/, "");
+
 const SAMPLE_REPORT: ChangeReportItem[] = [
   {
     change_type: "modified",
@@ -149,7 +153,7 @@ export default function Home() {
     formData.append("new_file", revisedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/api/compare", {
+      const response = await fetch(`${API_BASE_URL}/api/compare`, {
         method: "POST",
         body: formData,
       });

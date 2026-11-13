@@ -18,13 +18,18 @@ class DocumentValidationError(ValueError):
 
 
 def _extract_pdf(data: bytes) -> list[dict[str, int | str]]:
+    pdf = None
     try:
         pdf = fitz.open(stream=data, filetype="pdf")
-    except Exception as exc:
-        raise DocumentValidationError("Invalid PDF document.") from exc
+        if pdf.needs_pass:
+            pdf.close()
+            pdf = None
+            raise DocumentValidationError(
+                "Encrypted or password-protected PDFs are not supported. "
+                "Please upload an unlocked PDF."
+            )
 
-    paragraphs: list[dict[str, int | str]] = []
-    try:
+        paragraphs: list[dict[str, int | str]] = []
         for page_number, page in enumerate(pdf, start=1):
             page_paragraph = 0
             for block in page.get_text("blocks", sort=True):
@@ -38,9 +43,16 @@ def _extract_pdf(data: bytes) -> list[dict[str, int | str]]:
                             "text": text,
                         }
                     )
+        return paragraphs
+    except DocumentValidationError:
+        raise
+    except Exception as exc:
+        raise DocumentValidationError(
+            "Unable to read PDF content. Ensure the file is a valid, unencrypted PDF."
+        ) from exc
     finally:
-        pdf.close()
-    return paragraphs
+        if pdf is not None:
+            pdf.close()
 
 
 def _extract_docx(data: bytes) -> list[dict[str, int | str]]:

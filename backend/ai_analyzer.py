@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import os
 from typing import TypedDict
 
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class Change(TypedDict):
@@ -94,16 +97,27 @@ def analyze_changes(changes: list[Change]) -> AnalysisResult:
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured.")
 
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=_format_diff_xml(changes),
-        config={
-            "system_instruction": SYSTEM_INSTRUCTION,
-            "response_mime_type": "application/json",
-            "response_schema": RESPONSE_SCHEMA,
-        },
-    )
+    try:
+        if api_key.startswith("AQ."):
+            client = genai.Client(vertexai=True, api_key=api_key)
+        else:
+            client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=_format_diff_xml(changes),
+            config={
+                "system_instruction": SYSTEM_INSTRUCTION,
+                "response_mime_type": "application/json",
+                "response_schema": RESPONSE_SCHEMA,
+            },
+        )
+    except Exception as exc:
+        logger.error(
+            "Gemini API call failed: %s: %s",
+            type(exc).__name__,
+            str(exc),
+        )
+        raise
     if not response.text:
         raise RuntimeError("The analysis service returned an empty response.")
 
